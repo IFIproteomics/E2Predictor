@@ -2,8 +2,27 @@ Package: E2Predictor
 Type: Package
 Title: What the Package Does (Title Case)
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: Who to complain to <pnavarro@uni-mainz.de>
+Author: Pedro Navarro
+Maintainer: Pedro Navarro <pnavarro@uni-mainz.de>
 Description: More about what it does (maybe more than one line)
+Depends:
+    R (>= 3.1.0),hash,SDMTools,RColorBrewer,
+    dplyr,tidyr,ggplot2,readxl,classInt,
+    scales,pander,GGally,tools,readr
+Imports:
+    tools (>= 3.1.0),
+    RColorBrewer (>= 1.1.0),
+    SDMTools (>= 1.1.0),
+    readr,
+    readxl,
+    tidyr,
+    ggplot2,
+    reshape2
+Suggests:
+    RUnit,
+    bibtex,
+    knitcitations (>= 1.0-1),
+    knitr,
+    rmarkdown
 License: What license is it under?
 LazyData: TRUE
