@@ -6,18 +6,25 @@ Author: Pedro Navarro
 Maintainer: Pedro Navarro <pnavarro@uni-mainz.de>
 Description: More about what it does (maybe more than one line)
 Depends:
-    R (>= 3.2.5),hash,SDMTools,RColorBrewer,
-    dplyr,tidyr,ggplot2,readxl,classInt,
-    scales,pander,GGally,tools,readr
+    R (>= 3.2.5), dplyr
 Imports:
     tools (>= 3.1.0),
     RColorBrewer (>= 1.1.0),
     SDMTools (>= 1.1.0),
+    GGally,
+    lubridate,
+    stringr,
+    pbapply,
+    scales,
     readr,
     readxl,
     tidyr,
     ggplot2,
-    reshape2
+    reshape2,
+    Biostrings,
+    pROC,
+    neuralnet,
+    randomForest
 Suggests:
     RUnit,
     bibtex,

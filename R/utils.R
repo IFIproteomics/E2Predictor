@@ -1,4 +1,15 @@
-
+#' mkdir
+#' This recursively create a directory if it does not exist
+#' @param dirName the directory to create the directory
+#' @export
+mkdir = function(dirName){
+    if(!file.exists(dirName))
+    {
+        cat(paste("folder ", dirName, " does not exist, creating ... ", sep = ""))
+        dir.create(dirName, recursive=T, showWarnings=F)
+        cat("done!\n")
+    }
+}
 
 #' countCharOccurrences counts the presence of a given character into a string
 #'
@@ -8,7 +19,7 @@
 #' @export
 countCharOccurrences <- function(s, char) {
     s2 <- gsub(char,"",s)
-    return (nchar(s) - nchar(s2))
+    return ((nchar(s) - nchar(s2)) / nchar(char))
 }
 
 #' read_the_file is a wrapper of read_excel and read_delim (from readr and readxl packages) that
@@ -21,32 +32,33 @@ countCharOccurrences <- function(s, char) {
 read_the_file <- function(thefile, ...){
     seps <- c(",", ";", "\t", ":")
 
-    if(file_ext(thefile) == "xls" | file_ext(thefile) == "xlsx" )
+    if(tools::file_ext(thefile) == "xls" | tools::file_ext(thefile) == "xlsx" )
     {
-        df <- read_excel(thefile, ...)
+        df <- readxl::read_excel(thefile, ...)
         return(df)
     }
 
     # try different delims
-    trydf <- suppressWarnings(read_delim(thefile, delim = "", n_max = 5))
+    trydf <- suppressWarnings(readr::read_delim(thefile, delim = "", n_max = 5))
 
     tryDelim <- function(delim){
         numOccurs <- sapply(trydf[, 1], countCharOccurrences, delim)
-        if(! length(unique(numOccurs)) == 1 ) return(FALSE)
-        if(max(numOccurs) == 0) return(FALSE)
+        if(! length(unique(numOccurs)) == 1 ) return(0)
+        #if(max(numOccurs) == 0) return(FALSE)
 
-        return(TRUE)
+        return(max(numOccurs))
     }
 
     ll <- sapply(seps, tryDelim)
 
-    if(table(ll)["TRUE"] > 1)
+    ll_best_idx <- which(ll == max(ll))
+    if(length(ll_best_idx) > 1)
         stop(paste("Ambiguous file (", thefile ,"). Can't find a right delimiter to parse it! (several delimiters work)"))
 
-    if(table(ll)["TRUE"] == 0)
+    if(max(ll) == 0)
         stop(paste("File", thefile, "is not delimited by any of the common delimiters!"))
 
-    df = read_delim(thefile, delim= names(which(ll)), ... )
+    df = readr::read_delim(thefile, delim= names(ll_best_idx), ... )
 
     return(df)
 }
@@ -60,7 +72,7 @@ read_the_file <- function(thefile, ...){
 #'
 #' @export
 #'
-read_file_add_filename <- function(thefile, keepFolderName = F, UseGenericHeaders=F){
+read_file_add_filename <- function(thefile, keepFolderName = F, UseGenericHeaders=F, ...){
 
     print(paste("reading file:", thefile))
 
@@ -68,7 +80,7 @@ read_file_add_filename <- function(thefile, keepFolderName = F, UseGenericHeader
         return(NULL)
     }
 
-    csvdata <- read_file(thefile)
+    csvdata <- read_the_file(thefile, ...)
 
     foldername <- strsplit(thefile, "/")[[1]]
     foldername <- foldername[length(foldername) - 1]
@@ -133,7 +145,6 @@ cal.FDR <- function(values, w, slicing = NULL){
     #values <- log2AB
 
     log2.mean.weighted = sum(values*w, na.rm = T) / sum(w, na.rm = T)
-    #slicing = 500
     phi = 0.6745
 
     robust_var <- function(x){
@@ -259,4 +270,16 @@ modsInSequence <- function(sequence, mods){
     sapply(seq_chars, function(x){ seq_with_mod <<- paste0(seq_with_mod, x) } )
 
     return(seq_with_mod)
+}
+
+
+gen2proteins <- function(database){
+    #database = db
+    geneprots <- database %>% select(Entry, `Gene names`)
+    gene_has_prots <- geneprots %>%
+                    mutate(genes = strsplit(`Gene names`, split=" ")) %>%
+                    unnest(genes) %>%
+                    rename(protein_entry = Entry, gene_entry = genes, gene_list = `Gene names`)
+
+    return(gene_has_prots)
 }

@@ -4,7 +4,8 @@
 \alias{read_file_add_filename}
 \title{read_file_add_filename reads a file and attaches a column with the file name or the folder name}
 \usage{
-read_file_add_filename(thefile, keepFolderName = F, UseGenericHeaders = F)
+read_file_add_filename(thefile, keepFolderName = F, UseGenericHeaders = F,
+  ...)
 }
 \arguments{
 \item{thefile}{the file to be read}
