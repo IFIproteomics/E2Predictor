@@ -1,0 +1,6 @@
+[submodule "R/nnet_plot_update"]
+	path = R/nnet_plot_update
+	url = https://gist.github.com/mesontau/3660f0031118db7f8745ad8b96f3d8b2
+[submodule "R/gar_fun"]
+	path = R/gar_fun
+	url = https://gist.github.com/mesontau/fad8a26638c56815a41d102690ae6ec5
