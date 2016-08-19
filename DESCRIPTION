@@ -24,7 +24,10 @@ Imports:
     Biostrings,
     pROC,
     neuralnet,
-    randomForest
+    randomForest,
+    FactoMineR,
+    corrplot,
+    caret
 Suggests:
     RUnit,
     bibtex,
