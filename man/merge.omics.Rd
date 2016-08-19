@@ -4,7 +4,7 @@
 \alias{merge.omics}
 \title{merge.omics merges proteomics, genomics, and ligandomics data of an experiment}
 \usage{
-merge.omics(selected.cell.line, dbfile, is_perturbation = F,
+\method{merge}{omics}(selected.cell.line, dbfile, is_perturbation = F,
   condition = NULL, additionalGrepCondition = "", minReplicates = 1,
   allele.predictions = NULL, allele.predictor = "ic50",
   nM.threshold = 1000, saveAllResults = F, GOcategories = NULL)
