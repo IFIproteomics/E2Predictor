@@ -181,9 +181,55 @@ read_file_database <- function(thefile, ...){
     if(tools::file_ext(thefile) == "fasta"){
         fasta <- readAAStringSet(thefile, format="fasta",
                         nrec=-1L, skip=0L, seek.first.rec=FALSE, use.names=T)
-
     }
 
     my_database <- apply(fasta, 1, AAStringSet.to.dataframe)
+}
 
+
+#' read_file_crawler reads a file produced by crawler script and
+#' prepares the table to be used for modeling
+#'
+#' @param thefile crawler results file
+#'
+#' @export
+#'
+read_file_crawler <- function(thefile, ...){
+
+    crawler <- readxl::read_excel(thefile, sheet = 1)
+
+    crawler$accession <- gsub("\\|", "", stringr::str_extract(string = crawler$FastaTitle, pattern = "\\|.*\\|") )
+    crawler <- crawler %>% distinct(accession, .keep_all =T)
+
+    crawler <- crawler %>%
+        tidyr::spread(CELLO.Location, CELLO.Score, fill=0.0, sep=".") %>%
+        select(-CELLO.Location.NA)
+
+    crawler <- crawler %>%
+        tidyr::spread(SUBLOC.Location, SUBLOC.Reliability, fill=0.0, sep=".") %>%
+        select(-SUBLOC.Location.NA)
+
+    crawler <- crawler %>%
+        tidyr::spread(TARGETP.Location, TARGETP.Reliability, fill=0.0, sep=".") %>%
+        select(-TARGETP.Location.NA)
+
+    crawler <- crawler %>%
+        tidyr::spread(WOLFPSORT.Location, WOLFPSORT.Score, fill=0.0, sep=".") %>%
+        select(-WOLFPSORT.Location.NA)
+
+    crawler2 <- crawler %>% select(-c(accession, id, AccessionNumber, FastaTitle))
+
+    crawler2[is.na(crawler2)] <- 0.0
+
+    maxs <- apply(crawler2[, 2:ncol(crawler2)], 2, max)
+    mins <- apply(crawler2[, 2:ncol(crawler2)], 2, min, na.rm=T)
+
+    num.vars <- ncol(crawler2) - 1
+
+    crawler.sc <- as.data.frame(scale(crawler2[, 2:ncol(crawler2)], center = mins, scale = maxs - mins))
+
+
+    crawler.sc.id <- cbind(protein_entry = crawler$accession, crawler.sc)
+
+    return(crawler.sc.id)
 }
