@@ -13,7 +13,7 @@
 #'
 #' @export
 #'
-merge.omics <- function(selected.cell.line, dbfile,
+merge_omics <- function(selected.cell.line, dbfile,
                         is_perturbation = F, condition = NULL, additionalGrepCondition = "",
                         minReplicates = 1, allele.predictions = NULL, allele.predictor = "ic50",
                         nM.threshold = 1000, saveAllResults = F, GOcategories = NULL){
