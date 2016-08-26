@@ -233,3 +233,39 @@ read_file_crawler <- function(thefile, ...){
 
     return(crawler.sc.id)
 }
+
+
+#' load_data_modeling
+#' @description loads a data modeling table
+#'
+#' @param cell.line cell line to be loaded
+#' @param is_perturbation data from perturbations?
+#' @param condition if data from perturbations, condition to be loaded
+#' @param addgrepcond an extra parameter to locate the right condition. Example: to distinguish conditions like "Control I" and "Control II"
+#' @param requireAllele proteins with ligands require at least one ligand associated to an allele.
+#'
+#' @return a data.frame containing data for modeling
+#'
+#' @export
+#'
+load_data_modeling <- function(cell.line, is_perturbation, condition, addgrepcond = "", requireAllele = F){
+
+    experim.folder <- ifelse(is_perturbation, "perturbations", "cell.lines")
+    modeling.folder <- file.path(E2Predictor.Config$working.path, "tables.for.modeling", experim.folder, cell.line)
+
+    if(is_perturbation) modeling.folder <- file.path(modeling.folder, paste(condition, addgrepcond, sep = "_") )
+    modeling.folder <- gsub(" ", "", modeling.folder)
+    modeling.file <- file.path(modeling.folder, "omics_table_for_modeling.RData")
+
+    # load data for modeling
+    omics <- readRDS(modeling.file)
+
+    omics <- omics %>% mutate(has_ligands = ifelse(is.na(ligands), FALSE, TRUE))  # variable to be predicted
+
+    if(requireAllele) omics$has_ligands <- sapply(omics$predicted.allele, function(x) !all(is.na(x)) )
+
+    omics$key <- paste(cell.line, "perturbation", is_perturbation, condition, addgrepcond, "requireAllele", requireAllele, sep = "_" )
+
+    return(omics)
+}
+
