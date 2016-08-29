@@ -111,11 +111,13 @@ prelim.ML <- function(df, ncp = 5, dim.reduction.factor = 0.7, saveInFolder = NU
 #'
 #' @export
 #'
-get.training.sample <- function(df, class_category, percentage_training){
+get_training_sample <- function(df, class_category, percentage_training){
 
     # Sampling for training
-    df.class.true <- df %>% filter_(class_category == T)
-    df.class.false<- df %>% filter_(class_category == F)
+    df[, class_category] = as.logical(df[, class_category])
+
+    df.class.true <- df[df[,class_category] == T,] # %>% filter_(class_category == T)
+    df.class.false<- df[df[,class_category] == F,] # %>% filter_(class_category == F)
 
     #set the size of the training depending on the smallest dataset
     trainset.size <- round(min(nrow(df.class.true), nrow(df.class.false)) * percentage_training, 0)
@@ -358,3 +360,45 @@ plot(density(pr.alldataset.nn_[omics.model$has_ligands==F]))
 lines(density(pr.alldataset.nn_[omics.model$has_ligands==T]), col="red")
 
 }
+
+
+#' prepare_data_modeling
+#' @description fix some variable names (from gene ontology), filter variables, and normalize data
+#'
+#' @param df data frame containing data to be modeled
+#' @param useVariables a vector containing variable names to be used. When NULL, all variables are used.
+#'
+#' @export
+#'
+prepare_data_modeling <- function(df, useVariables=NULL){
+
+    omics.model <- df %>% distinct(protein_entry, .keep_all=TRUE)
+    omics.rownames <- omics.model$protein_entry
+
+    if(!is.null(useVariables)) omics.model <- omics.model[, useVariables]
+
+    #rename variables for the model
+    renaming.vars <- str_extract(names(omics.model), "\\[GO:.*\\]")
+    renaming.vars <- gsub("\\[", "", renaming.vars)
+    renaming.vars <- gsub("\\]", "", renaming.vars)
+    renaming.vars <- gsub(":", "", renaming.vars)
+
+    renaming.vars.index <- which(!is.na(renaming.vars))
+    renaming.vars <-renaming.vars[renaming.vars.index]
+    names(omics.model)[renaming.vars.index] <- renaming.vars
+
+
+    # Normalize variables
+    omics.model[is.na(omics.model)] <- 0.0
+
+    maxs <- apply(omics.model, 2, max)
+    mins <- apply(omics.model, 2, min)
+
+    num.vars <- ncol(omics.model) - 1
+
+    omics.model.sc <- as.data.frame(scale(omics.model, center = mins, scale = maxs - mins))
+    rownames(omics.model.sc) <- omics.rownames
+
+    return(omics.model.sc)
+}
+
