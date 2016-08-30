@@ -181,14 +181,7 @@ do.not.look.at.me <- function(){
     pr.simple.lm <- predict(lm.simple.fit, df2_tr$testset)
     MSE.simple.lm <- sum((pr.simple.lm - df2_tr$testset$has_ligands)^2)/nrow(df2_tr$testset)
 
-
-
-
-
-
-
-
-    # Train the neural network
+       # Train the neural network
     n <- names(trainset)
     f <- as.formula(paste("has_ligands ~", paste(n[!n %in% "has_ligands"], collapse = " + ")))
     #nn <- neuralnet(f,data=trainset,hidden=hidden.layers,linear.output=F)
