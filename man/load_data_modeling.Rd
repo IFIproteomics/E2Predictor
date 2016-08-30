@@ -4,8 +4,8 @@
 \alias{load_data_modeling}
 \title{load_data_modeling}
 \usage{
-load_data_modeling(cell.line, is_perturbation, condition, addgrepcond = "",
-  requireAllele = F)
+load_data_modeling(cell.line, is_perturbation, condition = "",
+  addgrepcond = "", requireAllele = F)
 }
 \arguments{
 \item{cell.line}{cell line to be loaded}

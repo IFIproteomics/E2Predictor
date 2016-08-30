@@ -201,21 +201,18 @@ read_file_crawler <- function(thefile, ...){
     crawler$accession <- gsub("\\|", "", stringr::str_extract(string = crawler$FastaTitle, pattern = "\\|.*\\|") )
     crawler <- crawler %>% distinct(accession, .keep_all =T)
 
-    crawler <- crawler %>%
-        tidyr::spread(CELLO.Location, CELLO.Score, fill=0.0, sep=".") %>%
-        select(-CELLO.Location.NA)
 
     crawler <- crawler %>%
-        tidyr::spread(SUBLOC.Location, SUBLOC.Reliability, fill=0.0, sep=".") %>%
-        select(-SUBLOC.Location.NA)
+        tidyr::spread(CELLO.Location, CELLO.Score, fill=0.0, sep=".") %>% select(-CELLO.Location.NA)
 
     crawler <- crawler %>%
-        tidyr::spread(TARGETP.Location, TARGETP.Reliability, fill=0.0, sep=".") %>%
-        select(-TARGETP.Location.NA)
+        tidyr::spread(SUBLOC.Location, SUBLOC.Reliability, fill=0.0, sep=".") %>% select(-SUBLOC.Location.NA)
 
     crawler <- crawler %>%
-        tidyr::spread(WOLFPSORT.Location, WOLFPSORT.Score, fill=0.0, sep=".") %>%
-        select(-WOLFPSORT.Location.NA)
+        tidyr::spread(TARGETP.Location, TARGETP.Reliability, fill=0.0, sep=".") %>% select(-TARGETP.Location.NA)
+
+    crawler <- crawler %>%
+        tidyr::spread(WOLFPSORT.Location, WOLFPSORT.Score, fill=0.0, sep=".") %>% select(-WOLFPSORT.Location.NA)
 
     crawler2 <- crawler %>% select(-c(accession, id, AccessionNumber, FastaTitle))
 
@@ -248,7 +245,7 @@ read_file_crawler <- function(thefile, ...){
 #'
 #' @export
 #'
-load_data_modeling <- function(cell.line, is_perturbation, condition, addgrepcond = "", requireAllele = F){
+load_data_modeling <- function(cell.line, is_perturbation, condition="", addgrepcond = "", requireAllele = F){
 
     experim.folder <- ifelse(is_perturbation, "perturbations", "cell.lines")
     modeling.folder <- file.path(E2Predictor.Config$working.path, "tables.for.modeling", experim.folder, cell.line)
@@ -265,6 +262,9 @@ load_data_modeling <- function(cell.line, is_perturbation, condition, addgrepcon
     if(requireAllele) omics$has_ligands <- sapply(omics$predicted.allele, function(x) !all(is.na(x)) )
 
     omics$key <- paste(cell.line, "perturbation", is_perturbation, condition, addgrepcond, "requireAllele", requireAllele, sep = "_" )
+
+    # Just for the moment, so that files are homogene.
+    if("FILENAME" %in% names(omics)) omics$FILENAME <- NULL
 
     return(omics)
 }
