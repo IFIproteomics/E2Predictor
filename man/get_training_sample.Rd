@@ -4,14 +4,16 @@
 \alias{get_training_sample}
 \title{get.training.sample}
 \usage{
-get_training_sample(df, class_category, percentage_training)
+get_training_sample(df, class_category, factor.training, grep_rowname = NULL)
 }
 \arguments{
 \item{df}{data frame containing a whole data set.}
 
 \item{class_category}{boolean column name used for classification.}
 
-\item{percentage_training}{percentage of data used for training. It takes the portion percentage_training from the smallest class and a equivalent number of elements from the biggest class.}
+\item{factor.training}{percentage of data used for training. It takes the portion factor.training from the smallest class and a equivalent number of elements from the biggest class.}
+
+\item{grep_rowname}{string containing a regular expression that limits the elements used for the training by choosing matching elements at rowname.}
 }
 \value{
 list with two data frames: trainset and testset

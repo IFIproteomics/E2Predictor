@@ -107,28 +107,36 @@ prelim_ML <- function(df, ncp = 5, dim.reduction.factor = 0.7, save.to = NULL, s
 #'
 #' @param df data frame containing a whole data set.
 #' @param class_category boolean column name used for classification.
-#' @param percentage_training percentage of data used for training. It takes the portion percentage_training from the smallest class and a equivalent number of elements from the biggest class.
+#' @param factor.training percentage of data used for training. It takes the portion factor.training from the smallest class and a equivalent number of elements from the biggest class.
+#' @param grep_rowname string containing a regular expression that limits the elements used for the training by choosing matching elements at rowname.
 #'
 #' @return list with two data frames: trainset and testset
 #'
 #' @export
 #'
-get_training_sample <- function(df, class_category, percentage_training){
+get_training_sample <- function(df, class_category, factor.training, grep_rowname=NULL){
 
     # Sampling for training
     df[, class_category] = as.logical(df[, class_category])
+
+    if(!is.null(grep_rowname)){
+        df_discardedForTraining <- df[grep(grep_rowname, rownames(df), invert = T) , ]
+        df                      <- df[grep(grep_rowname, rownames(df)) , ]
+    }
 
     df.class.true <- df[df[,class_category] == T,] # %>% filter_(class_category == T)
     df.class.false<- df[df[,class_category] == F,] # %>% filter_(class_category == F)
 
     #set the size of the training depending on the smallest dataset
-    trainset.size <- round(min(nrow(df.class.true), nrow(df.class.false)) * percentage_training, 0)
+    trainset.size <- round(min(nrow(df.class.true), nrow(df.class.false)) * factor.training, 0)
 
     trainset.index.true  <- sample(1:nrow(df.class.true),  size = trainset.size, replace = F)
     trainset.index.false <- sample(1:nrow(df.class.false), size = trainset.size, replace = F)
 
     trainset <- rbind(df.class.true[ trainset.index.true, ], df.class.false[ trainset.index.false, ])
     testset <-  rbind(df.class.true[-trainset.index.true, ], df.class.false[-trainset.index.false,])
+
+    if(!is.null(df_discardedForTraining)) testset <- rbind(testset, df_discardedForTraining)
 
     train.test.sets <- list(trainset = trainset, testset = testset)
 
@@ -197,8 +205,10 @@ retrieve_data_modeling <- function(cell.line, is_perturbation, ML_method){
 #'
 prepare_data_modeling <- function(df, useVariables=NULL){
 
-    omics.model <- df %>% distinct(protein_entry, .keep_all=TRUE)
-    omics.rownames <- omics.model$protein_entry
+    omics.model <- df %>% distinct(key, protein_entry, .keep_all=TRUE)
+
+    # Combine in rownames: key and protein name.
+    omics.key_protein <- paste(omics.model$key, omics.model$protein_entry, sep="#")
 
     if(!is.null(useVariables)) omics.model <- omics.model[, useVariables]
 
@@ -222,7 +232,8 @@ prepare_data_modeling <- function(df, useVariables=NULL){
     num.vars <- ncol(omics.model) - 1
 
     omics.model.sc <- as.data.frame(scale(omics.model, center = mins, scale = maxs - mins))
-    rownames(omics.model.sc) <- omics.rownames
+
+    rownames(omics.model.sc) <- omics.key_protein
 
     return(omics.model.sc)
 }

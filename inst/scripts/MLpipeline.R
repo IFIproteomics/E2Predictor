@@ -29,13 +29,14 @@ is_perturbation <- F
 condition <- conditions[5]
 addgrepcond <- ""  # " II "
 
+analysis_folder <- file.path(E2Predictor.Config$working.path, "data_analyses", "machine_learning")
 
 # requireAllele: if FALSE, all ligands will be considered;
 # if TRUE only proteins related to at least one ligand associated to a reliable predicted allele are considered
 requireAllele = TRUE
 
-# percentage_training applied to the smallest population (in this case, has_ligands=TRUE)
-percentage_training <- 0.6
+# factor.training applied to the smallest population (in this case, has_ligands=TRUE)
+factor.training <- 0.6
 
 #just for neural network configuration
 hidden.layers <- c(7, 2)
@@ -55,12 +56,17 @@ mkdir(ANN.folder)
 ## load data: this loads tables from the folder "tables.for.modeling". They include protein values, RPKM, alleles, and GO enriched terms
 omics <- load_data_modeling(cell.line = cell.lines[1], is_perturbation = T, condition = conditions[1], addgrepcond = " I ", requireAllele = requireAllele)
 
+## Example combining two cell lines, training in only one of them, and testing at the other one
+omics.cellline1 <- load_data_modeling(cell.line = cell.lines[1], is_perturbation = F, requireAllele = requireAllele)    # This is JY
+omics.cellline2 <- load_data_modeling(cell.line = cell.lines[2], is_perturbation = F, requireAllele = requireAllele)    # This is LCLC-103H
+omics.combined <- rbind(omics.cellline1, omics.cellline2)
+
 
 ## additional knowledge databases
 
 # crawler includes several predictions for cell localization and presence of helices
 crawler <- read_file_crawler( file.path(E2Predictor.Config$working.path, "predictions.crowler/Uniprot_Predictions_Localization_Crawler.xlsx") )
-crawler.preML <- prelim_ML(df = crawler, dim.reduction.factor = 0.6, save.to = "/Users/napedro/Desktop/loquesea")
+crawler.preML <- prelim_ML(df = crawler, dim.reduction.factor = 0.6, save.to = file.path(analysis_folder, "crawler"))
 crawler.red <- crawler[, !names(crawler) %in% crawler.preML$highly.correlated.vars]
 
 # SwissProt database, including many info about each protein. Here I filtered it to only 5
@@ -88,6 +94,9 @@ omics <- merge(omics, crawler.red, by="protein_entry" )
 omics <- merge(omics, swissprot, by="protein_entry")
 omics <- merge(omics, netctl, by.x="Entry name", by.y = "Entry.name")
 
+omics.combined <- merge(omics.combined, crawler.red, by="protein_entry")
+omics.combined <- merge(omics.combined, swissprot, by="protein_entry")
+omics.combined <- merge(omics.combined, netctl, by.x="Entry name", by.y = "Entry.name")
 
 # prepare data modeling
 
@@ -96,7 +105,6 @@ omics <- merge(omics, netctl, by.x="Entry name", by.y = "Entry.name")
 ## a different formula
 df1.vars <- c("has_ligands", "PROTEIN_QUANTITY", "RPKM.avg",  grep("\\[GO.*", names(omics), value = T)) #
 df2.vars <- c(df1.vars, "Length", "Mass", "Transmembrane", "Glycosylation", "Lipidation", names(crawler.red)[2:length(crawler.red)])
-
 df3.vars <- c(df1.vars, names(netctl)[2:length(names(netctl))])
 
 ## Prepare the data for modeling, by using only the variables defined above (I still keep these three variable subsets, which is useless...)
@@ -104,16 +112,23 @@ df1 <- E2Predictor::prepare_data_modeling(omics, useVariables = df1.vars)
 df2 <- E2Predictor::prepare_data_modeling(omics, useVariables = df2.vars)
 df3 <- E2Predictor::prepare_data_modeling(omics, useVariables = df3.vars)
 
-## test / training datasets. This returns an object containing two data frames: trainset and testset
-df1_tr <- get_training_sample(df1, class_category = class_category, percentage_training = percentage_training)
-df2_tr <- get_training_sample(df2, class_category = class_category, percentage_training = percentage_training)
-df3_tr <- get_training_sample(df3, class_category = class_category, percentage_training = percentage_training)
+omics.combined.datamodel <- prepare_data_modeling(omics.combined, useVariables = df3.vars)
 
+## test / training datasets. This returns an object containing two data frames: trainset and testset
+df1_tr <- get_training_sample(df1, class_category = class_category, factor.training = factor.training)
+df2_tr <- get_training_sample(df2, class_category = class_category, factor.training = factor.training)
+df3_tr <- get_training_sample(df3, class_category = class_category, factor.training = factor.training)
+
+# For the training sample of the combined JY and LCLC, we use 100% of JY as training. If it works, all proteins in trainset should be JY, and all
+# proteins in testset should be LCLC
+omics.combined_tr <- get_training_sample(omics.combined.datamodel, class_category = class_category, factor.training = 1, grep_rowname = "^JY")
 
 ## Preliminary Machine Learning (var. correlation & PCA)
-df1.preML <- prelim_ML(df = df1, dim.reduction.factor = 0.6, save.to = "/Users/napedro/Desktop/df1")
-df2.preML <- prelim_ML(df = df2, dim.reduction.factor = 0.6, save.to = "/Users/napedro/Desktop/df2")
-df3.preML <- prelim_ML(df = df3, dim.reduction.factor = 0.6, save.to = "/Users/napedro/Desktop/df3")
+df1.preML <- prelim_ML(df = df1, dim.reduction.factor = 0.6, save.to = file.path(analysis_folder, "df1") )
+df2.preML <- prelim_ML(df = df2, dim.reduction.factor = 0.6, save.to = file.path(analysis_folder, "df2") )
+df3.preML <- prelim_ML(df = df3, dim.reduction.factor = 0.6, save.to = file.path(analysis_folder, "df3") )
+
+omics.combined.preML <- prelim_ML(df= omics.combined.datamodel, dim.reduction.factor = 0.7, save.to = file.path(analysis_folder, "combined.JY.LCLC"))
 
 ## Machine Learning
 
@@ -131,6 +146,10 @@ forestFit.3 <- randomForest(x=df3_tr$trainset[, !names(df3_tr$trainset) %in% cla
                             importance=TRUE, do.trace=100, ntree = 500)
 
 
+forestFit.Combined <- randomForest(x=omics.combined_tr$trainset[, !names(omics.combined_tr$trainset) %in% class_category], y=as.factor(omics.combined_tr$trainset[,class_category]),
+                            importance=TRUE, do.trace=100, ntree = 500)
+
+
 df2.vars.red <- names(df2_tr$trainset)[ !(names(df2_tr$trainset) %in% df2.preML$highly.correlated.vars) ]
 
 ##f2.red <- as.formula(paste("has_ligands~", paste( df2.vars.red , collapse = "+")))
@@ -138,14 +157,15 @@ df2.vars.red <- names(df2_tr$trainset)[ !(names(df2_tr$trainset) %in% df2.preML$
 
 
 ## Evaluate Machine Learning. It saves some results (ROC curves, etc) at a user defined folder
-path.forestFit1 = file.path(E2Predictor.Config$working.path, "data_analyses", "machine_learning", "forest1")
-path.forestFit2 = file.path(E2Predictor.Config$working.path, "data_analyses", "machine_learning", "forest2")
-path.forestFit3 = file.path(E2Predictor.Config$working.path, "data_analyses", "machine_learning", "forest3")
+path.forestFit1 = file.path(analysis_folder, "df1")
+path.forestFit2 = file.path(analysis_folder, "df2")
+path.forestFit3 = file.path(analysis_folder, "df3")
+path.forestFit.Comb = file.path(analysis_folder, "combined.JY.LCLC")
 
 E2Predictor::evaluate_ML(forestFit, df1_tr$testset, class_category = class_category, save.to = path.forestFit1)
-E2Predictor::evaluate_ML(forestFit, df2_tr$testset, class_category = class_category, save.to = path.forestFit2)
-
+E2Predictor::evaluate_ML(forestFit.2, df2_tr$testset, class_category = class_category, save.to = path.forestFit2)
 E2Predictor::evaluate_ML(forestFit.3, df3_tr$testset, class_category = class_category, save.to = path.forestFit3)
+E2Predictor::evaluate_ML(forestFit.Combined, omics.combined_tr$testset, class_category = class_category, save.to = path.forestFit.Comb)
 
 
 
