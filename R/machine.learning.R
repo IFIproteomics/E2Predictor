@@ -119,6 +119,7 @@ get_training_sample <- function(df, class_category, factor.training, grep_rownam
     # Sampling for training
     df[, class_category] = as.logical(df[, class_category])
 
+    df_discardedForTraining <- NULL
     if(!is.null(grep_rowname)){
         df_discardedForTraining <- df[grep(grep_rowname, rownames(df), invert = T) , ]
         df                      <- df[grep(grep_rowname, rownames(df)) , ]
