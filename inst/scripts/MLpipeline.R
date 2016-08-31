@@ -155,17 +155,22 @@ df2.vars.red <- names(df2_tr$trainset)[ !(names(df2_tr$trainset) %in% df2.preML$
 ##f2.red <- as.formula(paste("has_ligands~", paste( df2.vars.red , collapse = "+")))
 ##annFit.2.red <-  neuralnet(f.simple, data=df2_tr$trainset, hidden=hidden.layers, linear.output=F, stepmax = 1e+06)
 
+annFit.Combined <- neuralnet::neuralnet(formula = f.simple, data = omics.combined_tr$trainset, linear.output = F, stepmax = 1e+06)
+
 
 ## Evaluate Machine Learning. It saves some results (ROC curves, etc) at a user defined folder
 path.forestFit1 = file.path(analysis_folder, "df1")
 path.forestFit2 = file.path(analysis_folder, "df2")
 path.forestFit3 = file.path(analysis_folder, "df3")
 path.forestFit.Comb = file.path(analysis_folder, "combined.JY.LCLC")
+path.ANN.Comb = file.path(analysis_folder, "combined.JY.LCLC_ANN")
+
 
 E2Predictor::evaluate_ML(forestFit, df1_tr$testset, class_category = class_category, save.to = path.forestFit1)
 E2Predictor::evaluate_ML(forestFit.2, df2_tr$testset, class_category = class_category, save.to = path.forestFit2)
 E2Predictor::evaluate_ML(forestFit.3, df3_tr$testset, class_category = class_category, save.to = path.forestFit3)
 E2Predictor::evaluate_ML(forestFit.Combined, omics.combined_tr$testset, class_category = class_category, save.to = path.forestFit.Comb)
+#E2Predictor::evaluate_ML(annFit.Combined, omics.combined_tr$testset, class_category = class_category, save.to = path.ANN.Comb)
 
 
 
