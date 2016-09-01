@@ -278,5 +278,7 @@ evaluate_ML <- function(predictor, testset, class_category, save.to=NULL){
     lines(density(y[x>0]), col="red")
     if(!is.null(save.to)) dev.off()
 
+    if(!is.null(save.to)) saveRDS(predictor, file=file.path(save.to, "predictor.Rds"  ))
+
     return(my.roc)
 }
