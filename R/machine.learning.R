@@ -280,5 +280,22 @@ evaluate_ML <- function(predictor, testset, class_category, save.to=NULL){
 
     if(!is.null(save.to)) saveRDS(predictor, file=file.path(save.to, "predictor.Rds"  ))
 
+
+    if(!is.null(save.to)) sink(file.path(save.to, "prediction_ROC_summary.txt"))
+
+        print(my.roc$call)
+        print(my.roc$auc)
+        print(cat("Classification levels:", my.roc$levels) )
+        print(cat("Direction:", my.roc$direction))
+        print(cat("Calculated in percent:", my.roc$percent))
+        print(cat("Sensitivities:", my.roc$sensitivities))
+        print(cat("Specifities:", my.roc$specificities))
+        print(cat("Thresholds:", my.roc$thresholds))
+
+    if(!is.null(save.to)) sink()
+
+
+
+
     return(my.roc)
 }
