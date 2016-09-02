@@ -21,7 +21,6 @@ Imports:
     tidyr,
     ggplot2,
     reshape2,
-    Biostrings,
     pROC,
     neuralnet,
     randomForest,

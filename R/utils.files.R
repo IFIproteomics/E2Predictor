@@ -1,8 +1,4 @@
-#source("https://bioconductor.org/biocLite.R")
-#biocLite("Biostrings")
-#library(Biostrings)
-
-##### Read specific file formats and filter out innecessary columns
+##### Read specific file formats and filter out unnecessary columns
 
 #' read_file_RPKM reads a file with RPKM readings of a SINGLE measurement (2 columns!)
 #'
@@ -156,35 +152,6 @@ read_ligands_PEAKS <- function(PEAKSresultsFolders,
     return(ligands.confident)
 }
 
-AAStringSet.to.dataframe <- function(aastringsetobj){
-    aastringsetobj <- fasta[1]
-    proteinchar <- as.character(aastringsetobj)
-
-    # parse names
-    protein_split <- strsplit(names(proteinchar), "\\|")[[1]]
-    protein_entry <- protein_split[2]
-    protein_accession <- strsplit(protein_split[3], "\\s")[[1]][1]
-    protein_description <- gsub(protein_accession, "", protein_split[3])
-    protein_sequence <- unname(proteinchar)
-
-    protein_df <- data.frame( protein_entry = c(protein_entry)
-                ,protein_accession = c(protein_accession)
-                ,protein_description = c(protein_description)
-                ,protein_sequence = c(protein_sequence)
-                )
-    return(protein_df)
-}
-
-read_file_database <- function(thefile, ...){
-    # thefile = "/Users/napedro/CloudStation/databases/canonical/UPSPhuman130605referenceproteome20251entries.fasta"
-
-    if(tools::file_ext(thefile) == "fasta"){
-        fasta <- readAAStringSet(thefile, format="fasta",
-                        nrec=-1L, skip=0L, seek.first.rec=FALSE, use.names=T)
-    }
-
-    my_database <- apply(fasta, 1, AAStringSet.to.dataframe)
-}
 
 
 #' read_file_crawler reads a file produced by crawler script and
@@ -268,4 +235,3 @@ load_data_modeling <- function(cell.line, is_perturbation, condition="", addgrep
 
     return(omics)
 }
-
