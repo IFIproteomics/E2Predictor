@@ -214,7 +214,7 @@ prepare_data_modeling <- function(df, useVariables=NULL){
     if(!is.null(useVariables)) omics.model <- omics.model[, useVariables]
 
     #rename variables for the model
-    renaming.vars <- str_extract(names(omics.model), "\\[GO:.*\\]")
+    renaming.vars <- stringr::str_extract(names(omics.model), "\\[GO:.*\\]")
     renaming.vars <- gsub("\\[", "", renaming.vars)
     renaming.vars <- gsub("\\]", "", renaming.vars)
     renaming.vars <- gsub(":", "", renaming.vars)
@@ -251,11 +251,30 @@ prepare_data_modeling <- function(df, useVariables=NULL){
 #'
 evaluate_ML <- function(predictor, testset, class_category, save.to=NULL){
 
+    # predictor=annFit.2.red
+    # testset=omics.combined_tr$testset
+    # class_category = class_category
+    # save.to = path.ANN.Comb.red
+
     if(!is.null(save.to)) mkdir(save.to)
 
     pred.summary <- summary(predictor)
-    testset$prediction <- as.numeric(predict(predictor, testset))
+
     testset$classification <- testset[, class_category]
+
+
+    # If this is a neuralnetwork object it works different to other predictors
+    if(class(predictor) == "nn" ){
+
+        vals <- as.matrix(testset[, predictor$model.list$variables])
+        testset$prediction <- as.numeric(neuralnet::compute(predictor,  vals)$net.result)
+
+    }
+
+    if(!class(predictor) == "nn" ){
+        testset$prediction <- as.numeric(predict(predictor, testset))
+    }
+
     f <- as.formula(paste(class_category, "prediction", sep = "~"))
 
     my.roc <- roc(classification ~ prediction, data=testset, plot=F, smooth=F)
@@ -270,10 +289,10 @@ evaluate_ML <- function(predictor, testset, class_category, save.to=NULL){
     if(!is.null(save.to)) sink()
 
     if(!is.null(save.to)) pdf(file.path(save.to, "separation_plots.pdf"))
-    colors <- ifelse(my.roc$original.response == 0, "black", "red")
-    plot(my.roc$original.predictor,pch=19, col=colors)
-    y = as.numeric(my.roc$original.predictor)
-    x = as.numeric(my.roc$original.response)
+    colors <- ifelse(my.roc$response == 0, "black", "red")
+    plot(my.roc$predictor,pch=19,cex=0.3, col=colors)
+    y = as.numeric(my.roc$predictor)
+    x = as.numeric(my.roc$response)
     plot(density(y[x==0]))
     lines(density(y[x>0]), col="red")
     if(!is.null(save.to)) dev.off()
