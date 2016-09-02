@@ -277,7 +277,7 @@ evaluate_ML <- function(predictor, testset, class_category, save.to=NULL){
 
     f <- as.formula(paste(class_category, "prediction", sep = "~"))
 
-    my.roc <- roc(classification ~ prediction, data=testset, plot=F, smooth=F)
+    my.roc <- pROC::roc(classification ~ prediction, data=testset, plot=F, smooth=F)
 
 
     if(!is.null(save.to)) pdf(file.path(save.to, "roc_plot.pdf"))
