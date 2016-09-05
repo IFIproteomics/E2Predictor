@@ -4,7 +4,8 @@
 \alias{evaluate_ML}
 \title{evaluate_ML}
 \usage{
-evaluate_ML(predictor, testset, class_category, save.to = NULL)
+evaluate_ML(predictor, testset, class_category, evaluation.features = NULL,
+  save.to = NULL)
 }
 \arguments{
 \item{predictor}{ML predict output object}

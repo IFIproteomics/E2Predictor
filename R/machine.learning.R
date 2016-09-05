@@ -249,35 +249,50 @@ prepare_data_modeling <- function(df, useVariables=NULL){
 #'
 #' @export
 #'
-evaluate_ML <- function(predictor, testset, class_category, save.to=NULL){
-
-    # predictor=annFit.2.red
-    # testset=omics.combined_tr$testset
-    # class_category = class_category
-    # save.to = path.ANN.Comb.red
+evaluate_ML <- function(predictor, testset, class_category, evaluation.features=NULL, save.to=NULL){
 
     if(!is.null(save.to)) mkdir(save.to)
 
     pred.summary <- summary(predictor)
 
-    testset$classification <- testset[, class_category]
+    testset.new <- testset
+    testset.new$classification <- testset[, class_category]
 
-
+    prediction_done = F
     # If this is a neuralnetwork object it works different to other predictors
-    if(class(predictor) == "nn" ){
+    if("nn" %in% class(predictor) ){
 
         vals <- as.matrix(testset[, predictor$model.list$variables])
-        testset$prediction <- as.numeric(neuralnet::compute(predictor,  vals)$net.result)
+        testset.new$prediction <- as.numeric(neuralnet::compute(predictor,  vals)$net.result)
 
+        if(!is.null(save.to)){
+            plnet <- NeuralNetTools::plotnet(predictor)
+            ggplot2::ggsave(file.path(save.to, "plotnet.pdf"),plot = plnet, width = 30, height = 9, limitsize = F)
+        }
+
+        prediction_done = T
     }
 
-    if(!class(predictor) == "nn" ){
-        testset$prediction <- as.numeric(predict(predictor, testset))
+    if("mlp" %in% class(predictor)){
+        testset.new$prediction <- as.numeric(
+            predict(predictor, testset[, (names(testset) %in% evaluation.features) ]))
+
+        if(!is.null(save.to)){
+            plnet <- NeuralNetTools::plotnet(predictor)
+            ggplot2::ggsave(file.path(save.to, "plotnet.pdf"),plot = plnet, width = 30, height = 9, limitsize = F)
+        }
+
+        prediction_done = T
+    }
+
+    if(!prediction_done){
+        testset.new$prediction <- as.numeric(predict(predictor, testset))
+
     }
 
     f <- as.formula(paste(class_category, "prediction", sep = "~"))
 
-    my.roc <- pROC::roc(classification ~ prediction, data=testset, plot=F, smooth=F)
+    my.roc <- pROC::roc(classification ~ prediction, data=testset.new, plot=F, smooth=F)
 
 
     if(!is.null(save.to)) pdf(file.path(save.to, "roc_plot.pdf"))
@@ -313,8 +328,10 @@ evaluate_ML <- function(predictor, testset, class_category, save.to=NULL){
 
     if(!is.null(save.to)) sink()
 
-
-
+    if(!is.null(save.to)){
+        lek <- NeuralNetTools::lekprofile(predictor, trainset)
+        ggplot2::ggsave(file.path(save.to, "lek.pdf"),plot = lek, width = 50, height = 9, limitsize = F)
+    }
 
     return(my.roc)
 }
