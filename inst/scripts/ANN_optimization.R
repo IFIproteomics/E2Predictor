@@ -119,12 +119,11 @@ features <- c("RPKM.avg"
               ,"cleavage_0.5"
               ,"cleavage_0.7"
               ,"cleavage_0.9"
-              ,"TMPRED.Helices"
+#              ,"TMPRED.Helices"
               ,"binder_rel_A2"
             )
 
 feat.combinations <- combinations(n = length(features), r=length(features) -1 , v=features, set=TRUE, repeats.allowed = FALSE)
-feat.combinations[15,]
 
 run.ANN <- function(feats, traintest, folder.name){
 
@@ -144,6 +143,54 @@ run.ANN <- function(feats, traintest, folder.name){
 
     return(list( predictor = annFit, roc = annFit.ROC) )
 }
+
+run.ANN.nnet <- function(feats, traintest, folder.name){
+
+    f <- as.formula( paste(class_category, "~" ,  paste(feats, collapse = "+")) )
+    print(paste0("Running ANN: ", n.comb))
+    print(f)
+    save.to <- file.path(path.ANN.Optimization.base, folder.name, paste("comb", n.comb, sep = "_"))
+    mkdir(save.to)
+    sink(file = file.path(save.to, "features.txt"))
+    print(f)
+    sink()
+
+    annFit <- nnet::nnet(f, data=traintest$trainset, size = 10, linout=F, maxit=10000)
+    annFit.ROC <- evaluate_ML(predictor=annFit, testset=traintest$testset, class_category = class_category, save.to = save.to)
+
+
+    p1<-lek.fun(annFit)
+
+    p1_tr <-p1 +
+        theme_bw() +
+        scale_colour_brewer(palette="PuBu") +
+        scale_linetype_manual(values=rep('dashed',6)) +
+        scale_size_manual(values=rep(1,6))
+
+    ggsave(file.path(save.to, "lek.plot.pdf"), plot = p1_tr, width = 30, height = 7)
+
+    n.comb <<- n.comb + 1
+
+    return(list( predictor = annFit, roc = annFit.ROC) )
+}
+
+
+my.f <- as.formula( paste(class_category, "~" ,  paste(feat.combinations[4,], collapse = "+")) )
+mynnet <- nnet::nnet(formula=my.f, data = omics.combined_tr$trainset, size = 8, linout=T, skip=T, maxit = 10000 )
+source('https://gist.github.com/fawda123/6860630/raw/e50fc6ef30b8269660b4e65aeec7ce02beb9b551/lek_fun.r')
+lek.fun(mynnet)
+p1<-lek.fun(mynnet)
+class(p1)
+# [1] "gg"     "ggplot"
+
+p1_tr <-p1 +
+    theme_bw() +
+    scale_colour_brewer(palette="PuBu") +
+    scale_linetype_manual(values=rep('dashed',6)) +
+    scale_size_manual(values=rep(1,6))
+
+ggsave(file.path(path.ANN.Optimization.base, "test_nnet", "lek.plot.pdf"), plot = p1_tr, width = 30, height = 7)
+evaluate_ML(predictor = mynnet, omics.combined_tr$testset, class_category = class_category, save.to = file.path(path.ANN.Optimization.base, "test_nnet"))
 
 n.comb <- 1
 permutations.training.JY <- apply(feat.combinations, 1, run.ANN, omics.combined_tr, "permutations.training.JY")
@@ -185,3 +232,57 @@ localiz.out.features <- features[grep("Location", features, invert = TRUE)]
 n.comb <- 1
 permutations.training.LCLC <- run.ANN(feats = localiz.out.features, omics.combined_tr_inverse, "no.TARGETPandSUBLOC.LCLC")
 
+
+
+n.comb <- 1
+permutations.training.nnet.LCLC <- apply(feat.combinations, 1, run.ANN.nnet, omics.combined_tr_inverse, "permutations.training.nnet.LCLC")
+
+
+library(clusterGeneration)
+
+seed.val<-2
+set.seed(seed.val)
+
+num.vars<-8
+num.obs<-1000
+
+#input variables
+cov.mat<-genPositiveDefMat(num.vars,covMethod=c("unifcorrmat"))$Sigma
+rand.vars<-mvrnorm(num.obs,rep(0,num.vars),Sigma=cov.mat)
+
+#output variables
+parms<-runif(num.vars,-10,10)
+y1<-rand.vars %*% matrix(parms) + rnorm(num.obs,sd=20)
+parms2<-runif(num.vars,-10,10)
+y2<-rand.vars %*% matrix(parms2) + rnorm(num.obs,sd=20)
+
+#final datasets
+rand.vars<-data.frame(rand.vars)
+resp<-data.frame(y1,y2)
+names(resp)<-c('Y1','Y2')
+dat.in<-data.frame(resp,rand.vars)
+
+#import the function from Github
+library(devtools)
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+library(NeuralNetTools)
+library(RSNNS)
+
+#neural net with two hidden layers, 9 and 2 nodes in each
+trainset <- omics.combined_tr$trainset[, features]
+traintarget <- omics.combined_tr$trainset[, (names(omics.combined_tr$trainset) %in% class_category)]
+testset <- omics.combined_tr$testset[, features]
+testtarget <- omics.combined_tr$testset[, (names(omics.combined_tr$testset) %in% class_category)]
+
+mod<-mlp(trainset, traintarget, size=c(9,2),linOut=T, inputsTest = testset, targetsTest = testtarget)
+mod.roc <- evaluate_ML(mod, omics.combined_tr$testset, class_category = class_category, save.to = file.path(path.ANN.Optimization.base, "test_mlp"))
+
+par(mar=numeric(4),family='serif')
+
+plnet <- NeuralNetTools::plotnet(mod)
+lek <- NeuralNetTools::lekprofile(mod, trainset)
+mkdir(file.path(path.ANN.Optimization.base, "test_mlp"))
+ggplot2::ggsave(file.path(path.ANN.Optimization.base, "test_mlp", "plotnet.pdf"),plot = plnet, width = 100, height = 9, limitsize = F)
+ggplot2::ggsave(file.path(path.ANN.Optimization.base, "test_mlp", "lek.pdf"),plot = lek, width = 100, height = 9, limitsize = F)
+
+#evaluate_ML(mod, testset, class_category, save.to = file.path(path.ANN.Optimization.base, "test_mlp"))
