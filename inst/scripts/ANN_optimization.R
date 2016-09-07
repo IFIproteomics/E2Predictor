@@ -1,5 +1,6 @@
 library(E2Predictor)
 library(gtools)
+library(ggplot2)
 
 ### Configuration #########################
 initConfiguration(netMHCpath = "/Users/napedro/external_sources/netMHC-4.0/netMHC",
@@ -155,11 +156,12 @@ run.ANN.nnet <- function(feats, traintest, folder.name){
     print(f)
     sink()
 
-    annFit <- nnet::nnet(f, data=traintest$trainset, size = 10, linout=F, maxit=10000)
+    annFit <- nnet::nnet(f, data=traintest$trainset, size = 10, linout=F, skip=T, maxit=10000)
+    if(is.null(annFit)) return(NA)
     annFit.ROC <- evaluate_ML(predictor=annFit, testset=traintest$testset, class_category = class_category, save.to = save.to)
 
 
-    p1<-lek.fun(annFit)
+    p1<-NeuralNetTools::lekprofile(annFit)
 
     p1_tr <-p1 +
         theme_bw() +
@@ -175,67 +177,50 @@ run.ANN.nnet <- function(feats, traintest, folder.name){
 }
 
 
-my.f <- as.formula( paste(class_category, "~" ,  paste(feat.combinations[4,], collapse = "+")) )
-mynnet <- nnet::nnet(formula=my.f, data = omics.combined_tr$trainset, size = 8, linout=T, skip=T, maxit = 10000 )
-source('https://gist.github.com/fawda123/6860630/raw/e50fc6ef30b8269660b4e65aeec7ce02beb9b551/lek_fun.r')
-lek.fun(mynnet)
-p1<-lek.fun(mynnet)
-class(p1)
-# [1] "gg"     "ggplot"
-
-p1_tr <-p1 +
-    theme_bw() +
-    scale_colour_brewer(palette="PuBu") +
-    scale_linetype_manual(values=rep('dashed',6)) +
-    scale_size_manual(values=rep(1,6))
-
-ggsave(file.path(path.ANN.Optimization.base, "test_nnet", "lek.plot.pdf"), plot = p1_tr, width = 30, height = 7)
-evaluate_ML(predictor = mynnet, omics.combined_tr$testset, class_category = class_category, save.to = file.path(path.ANN.Optimization.base, "test_nnet"))
-
-n.comb <- 1
-permutations.training.JY <- apply(feat.combinations, 1, run.ANN, omics.combined_tr, "permutations.training.JY")
-
-taps.out.features <- features[grep("^tap", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.JY <- run.ANN(feats = taps.out.features, omics.combined_tr, "no.taps.JY")
-
-cleavages.out.features <- features[grep("^cleav", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.JY <- run.ANN(feats = cleavages.out.features, omics.combined_tr, "no.cleavages.JY")
-
-GO.out.features <- features[grep("^GO", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.JY <- run.ANN(feats = GO.out.features, omics.combined_tr, "no.GOs.JY")
-
-localiz.out.features <- features[grep("Location", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.JY <- run.ANN(feats = localiz.out.features, omics.combined_tr, "no.TARGETPandSUBLOC.JY")
+# n.comb <- 1
+# permutations.training.JY <- apply(feat.combinations, 1, run.ANN, omics.combined_tr, "permutations.training.JY")
+#
+# taps.out.features <- features[grep("^tap", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.JY <- run.ANN(feats = taps.out.features, omics.combined_tr, "no.taps.JY")
+#
+# cleavages.out.features <- features[grep("^cleav", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.JY <- run.ANN(feats = cleavages.out.features, omics.combined_tr, "no.cleavages.JY")
+#
+# GO.out.features <- features[grep("^GO", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.JY <- run.ANN(feats = GO.out.features, omics.combined_tr, "no.GOs.JY")
+#
+# localiz.out.features <- features[grep("Location", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.JY <- run.ANN(feats = localiz.out.features, omics.combined_tr, "no.TARGETPandSUBLOC.JY")
 
 
 
-n.comb <- 1
-permutations.training.LCLC <- apply(feat.combinations, 1, run.ANN, omics.combined_tr_inverse, "permutations.training.LCLC")
-
-taps.out.features <- features[grep("^tap", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.LCLC <- run.ANN(feats = taps.out.features, omics.combined_tr_inverse, "no.taps.LCLC")
-
-cleavages.out.features <- features[grep("^cleav", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.LCLC <- run.ANN(feats = cleavages.out.features, omics.combined_tr_inverse, "no.cleavages.LCLC")
-
-GO.out.features <- features[grep("^GO", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.LCLC <- run.ANN(feats = GO.out.features, omics.combined_tr_inverse, "no.GOs.LCLC")
-
-localiz.out.features <- features[grep("Location", features, invert = TRUE)]
-n.comb <- 1
-permutations.training.LCLC <- run.ANN(feats = localiz.out.features, omics.combined_tr_inverse, "no.TARGETPandSUBLOC.LCLC")
+# n.comb <- 1
+# permutations.training.LCLC <- apply(feat.combinations, 1, run.ANN, omics.combined_tr_inverse, "permutations.training.LCLC")
+#
+# taps.out.features <- features[grep("^tap", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.LCLC <- run.ANN(feats = taps.out.features, omics.combined_tr_inverse, "no.taps.LCLC")
+#
+# cleavages.out.features <- features[grep("^cleav", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.LCLC <- run.ANN(feats = cleavages.out.features, omics.combined_tr_inverse, "no.cleavages.LCLC")
+#
+# GO.out.features <- features[grep("^GO", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.LCLC <- run.ANN(feats = GO.out.features, omics.combined_tr_inverse, "no.GOs.LCLC")
+#
+# localiz.out.features <- features[grep("Location", features, invert = TRUE)]
+# n.comb <- 1
+# permutations.training.LCLC <- run.ANN(feats = localiz.out.features, omics.combined_tr_inverse, "no.TARGETPandSUBLOC.LCLC")
 
 
 
 n.comb <- 1
-permutations.training.nnet.LCLC <- apply(feat.combinations, 1, run.ANN.nnet, omics.combined_tr_inverse, "permutations.training.nnet.LCLC")
+permutations.training.nnet.JY <- apply(feat.combinations, 1, run.ANN.nnet, omics.combined_tr, "permutations.training.nnet.skipTrue.JY")
 
 
 library(clusterGeneration)
@@ -274,15 +259,61 @@ traintarget <- omics.combined_tr$trainset[, (names(omics.combined_tr$trainset) %
 testset <- omics.combined_tr$testset[, features]
 testtarget <- omics.combined_tr$testset[, (names(omics.combined_tr$testset) %in% class_category)]
 
-mod<-mlp(trainset, traintarget, size=c(9,2),linOut=T, inputsTest = testset, targetsTest = testtarget)
-mod.roc <- evaluate_ML(mod, omics.combined_tr$testset, class_category = class_category, save.to = file.path(path.ANN.Optimization.base, "test_mlp"))
+traintarget <- factor(traintarget,
+       levels=c(TRUE,FALSE),
+       labels=c(TRUE,FALSE))
 
-par(mar=numeric(4),family='serif')
+mod<-RSNNS::mlp(trainset, traintarget, size=c(9,2),linOut=T, inputsTest = testset, targetsTest = testtarget)
+mod.roc <- evaluate_ML(mod, testset, class_category = class_category, save.to = file.path(path.ANN.Optimization.base, "test_mlp"))
 
-plnet <- NeuralNetTools::plotnet(mod)
-lek <- NeuralNetTools::lekprofile(mod, trainset)
-mkdir(file.path(path.ANN.Optimization.base, "test_mlp"))
-ggplot2::ggsave(file.path(path.ANN.Optimization.base, "test_mlp", "plotnet.pdf"),plot = plnet, width = 100, height = 9, limitsize = F)
-ggplot2::ggsave(file.path(path.ANN.Optimization.base, "test_mlp", "lek.pdf"),plot = lek, width = 100, height = 9, limitsize = F)
 
-#evaluate_ML(mod, testset, class_category, save.to = file.path(path.ANN.Optimization.base, "test_mlp"))
+# pruned model using code from RSSNS pruning demo
+pruneFuncParams <- list(
+    max_pr_error_increase = 10.0,
+    pr_accepted_error = 1.0,
+    no_of_pr_retrain_cycles = 1000,
+    min_error_to_stop = 0.01,
+    init_matrix_value = 1e-6,
+    input_pruning = TRUE,
+    hidden_pruning = TRUE)
+mod <- RSNNS::mlp(trainset, traintarget, size = c(10,4), learnFunc="BackpropMomentum", maxit= 10000)
+        #pruneFunc = "OptimalBrainSurgeon", pruneFuncParams = pruneFuncParams)
+mod.roc <- evaluate_ML(mod, testset, class_category = class_category,evaluation.features = features, save.to = file.path(path.ANN.Optimization.base, "test_mlp_BackpropMomentum"))
+
+
+## caret ANN
+
+all.feats <- names(omics.combined_tr$trainset)
+mod.caret.nnet.20 <- caret::train(#trainset,
+                                  omics.combined_tr$trainset[, !(names(omics.combined_tr$trainset) %in% class_category)],
+                                     traintarget,
+                                     #preProcess="pca",
+                                     metric="Accuracy",
+                                     maximize=T,
+                                     method="nnet", maxit=10000, skip=TRUE # , size=20
+                                )
+
+
+
+
+mod.caret.nnet.roc <- evaluate_ML(predictor=mod.caret.nnet$finalModel,
+                                  testset=testset,
+                                  class_category=class_category,
+                                  evaluation.features=features,
+                                  save.to=file.path(path.ANN.Optimization.base, "test_mlp_caret_ann_allFeats_skipTrue"))
+
+
+
+
+
+#dput(omics.combined_tr$trainset)
+omics.combined_tr$trainset[,class_category] <- as.factor(omics.combined_tr$trainset[,class_category])
+mod.caret.neuralnet.20.5.2 <- caret::train(
+    form=f.all,
+    data=omics.combined_tr$trainset,
+    preProcess="pca",
+    metric="Accuracy",
+    maximize=T,
+    method="neuralnet", layer1=20, layer2=5, layer3=2
+)
+
