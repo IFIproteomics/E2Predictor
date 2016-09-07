@@ -260,26 +260,28 @@ evaluate_ML <- function(predictor, testset, class_category, evaluation.features=
 
     prediction_done = F
     # If this is a neuralnetwork object it works different to other predictors
-    if("nn" %in% class(predictor) ){
+    if(any(c("nn") %in% class(predictor)) ){
 
         vals <- as.matrix(testset[, predictor$model.list$variables])
         testset.new$prediction <- as.numeric(neuralnet::compute(predictor,  vals)$net.result)
 
         if(!is.null(save.to)){
-            plnet <- NeuralNetTools::plotnet(predictor)
-            ggplot2::ggsave(file.path(save.to, "plotnet.pdf"),plot = plnet, width = 30, height = 9, limitsize = F)
+            pdf(file.path(save.to, "plotnet.pdf"), 30,9)
+                NeuralNetTools::plotnet(predictor)
+            dev.off()
         }
 
         prediction_done = T
     }
 
-    if("mlp" %in% class(predictor)){
+    if( any(c("mlp", "nnet") %in% class(predictor)) ){
         testset.new$prediction <- as.numeric(
             predict(predictor, testset[, (names(testset) %in% evaluation.features) ]))
 
         if(!is.null(save.to)){
-            plnet <- NeuralNetTools::plotnet(predictor)
-            ggplot2::ggsave(file.path(save.to, "plotnet.pdf"),plot = plnet, width = 30, height = 9, limitsize = F)
+            pdf(file.path(save.to, "plotnet.pdf"), 30,9)
+                NeuralNetTools::plotnet(predictor)
+            dev.off()
         }
 
         prediction_done = T
@@ -329,7 +331,9 @@ evaluate_ML <- function(predictor, testset, class_category, evaluation.features=
     if(!is.null(save.to)) sink()
 
     if(!is.null(save.to)){
-        lek <- NeuralNetTools::lekprofile(predictor, trainset)
+        trs = trainset
+        if(any(class(predictor) == "nnet")) return(my.roc)
+        lek <- NeuralNetTools::lekprofile(predictor, trs)
         ggplot2::ggsave(file.path(save.to, "lek.pdf"),plot = lek, width = 50, height = 9, limitsize = F)
     }
 
