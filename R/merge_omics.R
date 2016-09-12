@@ -1,9 +1,10 @@
 #' merge.omics merges proteomics, genomics, and ligandomics data of an experiment
 #'
-#' @param selected.cell.line cell line to integrate data
+#' @param selected.cell.line cell line to integrate data.If it is a 3-unit vector, it defines (Proteomics, Genomics, Ligandomics)
 #' @param dbfile Uniprot database filename (NOT in fasta format! Use the xls format)
-#' @param is_perturbation indicates if the experiment is a perturbation experiment
-#' @param condition in case of a perturbation, this indicates which condition you want to use
+#' @param is_perturbation indicates if the experiment is a perturbation experiment. If it is a 3-unit vector, it defines (Proteomics, Genomics, Ligandomics)
+#' @param condition in case of a perturbation, this indicates which condition you want to use. If it is a 3-unit vector, it defines (Proteomics, Genomics, Ligandomics)
+#' @param additionalGrepCondition regular expressions(s) defined to find which conditions from perturbations should be used. If it is a 3-unit vector, it defines (Proteomics, Genomics, Ligandomics)
 #' @param minReplicates for ligandomics data, the minimum number of biological replicates required to validate a ligand
 #' @param allele.predictions data frame containing allele predictions for the ligands. If NULL, they will be estimated
 #' @param allele.predictor c("rank", "ic50") predictor to be used.
@@ -18,45 +19,81 @@ merge_omics <- function(selected.cell.line, dbfile,
                         minReplicates = 1, allele.predictions = NULL, allele.predictor = "ic50",
                         nM.threshold = 1000, saveAllResults = F, GOcategories = NULL){
 
+
+    if(!length(selected.cell.line) %in% c(1,3)){
+        message("Error: length of vector selected.cell.line must be 1 or 3")
+        stop()
+    }
+    if(!length(is_perturbation) %in% c(1,3)){
+        message("Error: length of vector is_perturbation must be 1 or 3")
+        stop()
+    }
+    if(!length(condition) %in% c(1,3)){
+        message("Error: length of vector condition must be 1 or 3")
+        stop()
+    }
+    if(!length(additionalGrepCondition) %in% c(1,3)){
+        message("Error: length of vector additionalGrepCondition must be 1 or 3")
+        stop()
+    }
+
+
+    if(length(selected.cell.line)==1) selected.cell.line = rep(selected.cell.line, 3)
+    if(length(is_perturbation)==1) is_perturbation = rep(is_perturbation, 3)
+    if(length(condition)==1) condition = rep(condition, 3)
+    if(length(additionalGrepCondition)==1) additionalGrepCondition = rep(additionalGrepCondition, 3)
+
     ## Function config #################
     experiment_folder <- ifelse(is_perturbation, "perturbations", "cell_lines")
 
-    proteomics.cellline.folder <- file.path(E2Predictor.Config$working.path, "protein_expression_data", experiment_folder)
-    genomics.cellline.folder <- file.path(E2Predictor.Config$working.path, "mRNA_expression_data", experiment_folder)
-    ligandomics.cellline.folder <- file.path(E2Predictor.Config$working.path, "ligandomes", experiment_folder)
-    allele.predictions.dir <- file.path(E2Predictor.Config$working.path, "allele.predictions", experiment_folder, selected.cell.line)
+    proteomics.cellline.folder <- file.path(E2Predictor.Config$working.path, "protein_expression_data", experiment_folder[1])
+    genomics.cellline.folder <- file.path(E2Predictor.Config$working.path, "mRNA_expression_data", experiment_folder[2])
+    ligandomics.cellline.folder <- file.path(E2Predictor.Config$working.path, "ligandomes", experiment_folder[3])
+
+    allele.predictions.dir <- file.path(E2Predictor.Config$working.path, "allele.predictions", experiment_folder, selected.cell.line[3])
     allele.predictions.filename <- "allele.predictions.Rds"
 
-    if(is_perturbation){
+    omics.table.folder.name.pr <- paste("Prot", selected.cell.line[1], ifelse(is_perturbation[1], paste("Perturb", condition[1], additionalGrepCondition[1], sep="_" ), ""),  sep="_")
+    omics.table.folder.name.gn <- paste("Gen", selected.cell.line[2], ifelse(is_perturbation[2], paste("Perturb", condition[2], additionalGrepCondition[2], sep="_" ), ""),  sep="_")
+    omics.table.folder.name.lg <- paste("Lig", selected.cell.line[3], ifelse(is_perturbation[3], paste("Perturb", condition[3], additionalGrepCondition[3], sep="_" ), ""),  sep="_")
+    omics.table.folder.name <- paste(omics.table.folder.name.pr, omics.table.folder.name.gn, omics.table.folder.name.lg, sep="-")
+    omics.table.folder.name <- gsub(" ", "", omics.table.folder.name)
 
-        proteomics.cellline.folder <- file.path(proteomics.cellline.folder, selected.cell.line)
+    omics.tables.folder <- file.path(E2Predictor.Config$working.path,"tables.for.modeling", omics.table.folder.name)
+
+
+    if(is_perturbation[1]){
+
+        proteomics.cellline.folder <- file.path(proteomics.cellline.folder, selected.cell.line[1])
         proteomics.file <- list.files(proteomics.cellline.folder, all.files = F, full.names = T)
 
-        genomics.file <- list.files( file.path(genomics.cellline.folder, selected.cell.line) , pattern = condition, full.names = T)
+    }else{
+        proteomics.file <- list.files(proteomics.cellline.folder, all.files = F, full.names = T)
+        proteomics.file <- proteomics.file[grep(selected.cell.line[1], proteomics.file)]
+    }
 
-        ligandomics.files <- list.dirs(file.path(ligandomics.cellline.folder, selected.cell.line), recursive = F)
-        ligandomics.files <- ligandomics.files[grep(condition, ligandomics.files)]
-        if(nchar(additionalGrepCondition) > 0){
-            ligandomics.files <- ligandomics.files[grep(additionalGrepCondition, ligandomics.files)]
+    if(is_perturbation[2]){
+
+        genomics.file <- list.files( file.path(genomics.cellline.folder, selected.cell.line[2]) , pattern = condition[2], full.names = T)
+    }else{
+
+        genomics.file <- list.files(genomics.cellline.folder, pattern = selected.cell.line[2], full.names = T)
+    }
+
+    if(is_perturbation[3]){
+
+        ligandomics.files <- list.dirs(file.path(ligandomics.cellline.folder, selected.cell.line[3]), recursive = F)
+        ligandomics.files <- ligandomics.files[grep(condition[3], ligandomics.files)]
+        if(nchar(additionalGrepCondition[3]) > 0){
+            ligandomics.files <- ligandomics.files[grep(additionalGrepCondition[3], ligandomics.files)]
         }
 
         allele.predictions.dir <- file.path(allele.predictions.dir,
-                                            paste(condition, gsub(" ", "", additionalGrepCondition), sep = "_"))
-
-        omics.tables.folder <- file.path(E2Predictor.Config$working.path,"tables.for.modeling", "perturbations",
-                                         selected.cell.line,
-                                         paste(condition, gsub(" ", "", additionalGrepCondition), sep = "_"))
+                                            paste(condition[3], gsub(" ", "", additionalGrepCondition[3]), sep = "_"))
 
     }else{
 
-        proteomics.file <- list.files(proteomics.cellline.folder, all.files = F, full.names = T)
-        proteomics.file <- proteomics.file[grep(selected.cell.line, proteomics.file)]
-
-        genomics.file <- list.files(genomics.cellline.folder, pattern = selected.cell.line, full.names = T)
-
-        ligandomics.files <- file.path(ligandomics.cellline.folder, selected.cell.line)
-
-        omics.tables.folder <- file.path(E2Predictor.Config$working.path,"tables.for.modeling", "cell.lines", selected.cell.line)
+        ligandomics.files <- file.path(ligandomics.cellline.folder, selected.cell.line[3])
     }
 
     ####################################
@@ -77,10 +114,10 @@ merge_omics <- function(selected.cell.line, dbfile,
     ## Read Proteomics data ############
     message("Reading Proteomics data...")
     proteomics <- read_file_protein(proteomics.file)
-    if(is_perturbation){
-        proteomics <- proteomics.select.condition(proteomics, condition)
+    if(is_perturbation[1]){
+        proteomics <- proteomics.select.condition(proteomics, condition[1])
     }else{
-        proteomics <- proteomics %>% rename_( "PROTEIN_QUANTITY" = selected.cell.line )
+        proteomics <- proteomics %>% rename_( "PROTEIN_QUANTITY" = selected.cell.line[1] )
     }
 
     # filter protein names from the proteomics data not present at the Uniprot DB
@@ -92,7 +129,7 @@ merge_omics <- function(selected.cell.line, dbfile,
     ## Read Ligandomics data ###########
     message("Reading Ligandomics data...")
     ligandomics <- read_ligands_PEAKS(ligandomics.files, minReplicates = minReplicates, ligands_min_length = 8, ligands_max_length = 14, uniprotDB = db)
-    ligandomics$cell.line <- selected.cell.line
+    ligandomics$cell.line <- selected.cell.line[3]
     message(paste0("Number of ligands: ", nrow(ligandomics)))
     ####################################
 
@@ -103,12 +140,12 @@ merge_omics <- function(selected.cell.line, dbfile,
     }
 
     allele.predictions.1pred <- allele.predictions %>% ungroup() %>%
-        filter(predictor == allele.predictor, cell.line == selected.cell.line) %>%
+        filter(predictor == allele.predictor, cell.line == selected.cell.line[3]) %>%
         mutate(allele = ifelse(nM < nM.threshold, allele, NA)) %>%
         select(Peptide, allele) %>%
         rename(Sequence = Peptide, predicted.allele = allele)
 
-    ligandomics <- merge(ligandomics, allele.predictions.1pred, by="Sequence")
+    ligandomics <- merge(ligandomics, allele.predictions.1pred, by="Sequence", all.x = T)
 
     ####################################
 
@@ -189,8 +226,8 @@ merge_omics <- function(selected.cell.line, dbfile,
 
     ## Save results ####################
     if(saveAllResults){
-        mkdir(allele.predictions.dir)
-        saveRDS(allele.predictions,file.path(allele.predictions.dir, allele.predictions.filename))
+        mkdir(allele.predictions.dir[3])
+        saveRDS(allele.predictions,file.path(allele.predictions.dir[3], allele.predictions.filename))
 
         mkdir(omics.tables.folder)
         saveRDS(omics, file = file.path(omics.tables.folder, "omics_table_for_modeling.RData"))
