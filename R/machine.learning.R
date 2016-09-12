@@ -249,7 +249,7 @@ prepare_data_modeling <- function(df, useVariables=NULL){
 #'
 #' @export
 #'
-evaluate_ML <- function(predictor, testset, class_category, evaluation.features=NULL, save.to=NULL){
+evaluate_ML <- function(predictor, testset, class_category, evaluation.features=NULL, save.to=NULL, trainset=NULL){
 
     if(!is.null(save.to)) mkdir(save.to)
 
@@ -275,6 +275,7 @@ evaluate_ML <- function(predictor, testset, class_category, evaluation.features=
     }
 
     if( any(c("mlp", "nnet") %in% class(predictor)) ){
+
         testset.new$prediction <- as.numeric(
             predict(predictor, testset[, (names(testset) %in% evaluation.features) ]))
 
@@ -331,8 +332,8 @@ evaluate_ML <- function(predictor, testset, class_category, evaluation.features=
     if(!is.null(save.to)) sink()
 
     if(!is.null(save.to)){
-        trs = trainset
         if(any(class(predictor) == "nnet")) return(my.roc)
+        trs = trainset
         lek <- NeuralNetTools::lekprofile(predictor, trs)
         ggplot2::ggsave(file.path(save.to, "lek.pdf"),plot = lek, width = 50, height = 9, limitsize = F)
     }
